@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Palette + fonts lifted from the reference design (oklch tokens). */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  --color-ink: oklch(12.9% 0.042 264.695); /* headings / darkest navy */
+  --color-navy: oklch(20.8% 0.042 265.755); /* primary button */
+  --color-muted: oklch(55.4% 0.046 257.417); /* subtext / nav */
+  --color-line: oklch(92.9% 0.013 255.508); /* borders */
+  --color-rust: oklch(64.6% 0.222 41.116); /* accent (italic "skills") */
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: #ffffff;
+  color: oklch(12.9% 0.042 264.695);
+  font-family: var(--font-sans);
+}

@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# generated skill audits
+out/
+
+# local data store (FileStore dev backend) + exports
+.data/
+exports/
+
+# logs
+*.log
+npm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# build
+dist/
+.next/
+*.tsbuildinfo
+next-env.d.ts
