@@ -17,9 +17,9 @@ export default async function SkillsPage({
   searchParams: Promise<{ status?: string; ingested?: string; checked?: string }>;
 }) {
   const sp = await searchParams;
-  const org = store.getOrCreateDefaultOrg();
+  const org = await store.getOrCreateDefaultOrg();
   const filter = (sp.status as SkillStatus | undefined) ?? undefined;
-  const skills = store.listSkills(org.id, filter);
+  const skills = await store.listSkills(org.id, filter);
 
   return (
     <div className="space-y-6">

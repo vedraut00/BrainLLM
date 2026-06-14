@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { store } from "@/lib/store";
 
-function org() {
-  return store.getOrCreateDefaultOrg();
+async function orgId(): Promise<string> {
+  return (await store.getOrCreateDefaultOrg()).id;
 }
 
 /** Connect a help-center source and ingest → generate draft skills. (Can take ~30–60s.) */
@@ -21,20 +21,18 @@ export async function ingestAction(formData: FormData): Promise<void> {
   }
   let result;
   try {
-    result = await store.ingestHelpCenter(org().id, url, max);
+    result = await store.ingestHelpCenter(await orgId(), url, max);
   } catch {
-    // crawl/network/LLM failure → friendly message instead of a crash screen
     redirect("/connect?error=ingest-failed");
   }
   revalidatePath("/skills");
   revalidatePath("/dashboard");
-  // pass the real count so the Skills page can tell "N drafts" vs "nothing found"
   redirect(`/skills?ingested=${result.skillsCreated}`);
 }
 
 export async function approveAction(formData: FormData): Promise<void> {
   const id = String(formData.get("skillId") ?? "");
-  store.approveSkill(org().id, id, "founder@dashboard");
+  await store.approveSkill(await orgId(), id, "founder@dashboard");
   revalidatePath(`/skills/${id}`);
   revalidatePath("/skills");
   revalidatePath("/publish");
@@ -42,14 +40,14 @@ export async function approveAction(formData: FormData): Promise<void> {
 
 export async function archiveAction(formData: FormData): Promise<void> {
   const id = String(formData.get("skillId") ?? "");
-  store.archiveSkill(org().id, id);
+  await store.archiveSkill(await orgId(), id);
   revalidatePath(`/skills/${id}`);
   revalidatePath("/skills");
 }
 
 export async function regenerateAction(formData: FormData): Promise<void> {
   const id = String(formData.get("skillId") ?? "");
-  await store.regenerateSkill(org().id, id);
+  await store.regenerateSkill(await orgId(), id);
   revalidatePath(`/skills/${id}`);
   revalidatePath("/skills");
 }
@@ -59,13 +57,13 @@ export async function saveEditAction(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const bodyMd = String(formData.get("bodyMd") ?? "");
-  store.saveEdit(org().id, id, { title, description, bodyMd }, "user");
+  await store.saveEdit(await orgId(), id, { title, description, bodyMd }, "user");
   revalidatePath(`/skills/${id}`);
   revalidatePath("/skills");
 }
 
 export async function detectStaleAction(): Promise<void> {
-  await store.detectStaleness(org().id);
+  await store.detectStaleness(await orgId());
   revalidatePath("/skills");
   revalidatePath("/dashboard");
   redirect("/skills?checked=1");

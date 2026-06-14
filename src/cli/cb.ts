@@ -24,14 +24,14 @@ function arg(flag: string, fallback?: string): string | undefined {
 
 async function main(): Promise<void> {
   const [cmd, positional] = [process.argv[2], process.argv[3]];
-  const org = store.getOrCreateDefaultOrg();
+  const org = await store.getOrCreateDefaultOrg();
 
   switch (cmd) {
     case "org": {
       console.log(`\nOrg:   ${org.name}  (${org.id}, slug=${org.slug}, plan=${org.plan})`);
       console.log(`MCP:   ${MCP_BASE}/mcp/${org.mcpToken}`);
       console.log(`Token: ${org.mcpToken}`);
-      console.log(`Sources: ${store.listSources(org.id).length}, skills: ${store.listSkills(org.id).length}\n`);
+      console.log(`Sources: ${(await store.listSources(org.id)).length}, skills: ${(await store.listSkills(org.id)).length}\n`);
       break;
     }
 
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
 
     case "list": {
       const status = arg("--status") as never;
-      const skills = store.listSkills(org.id, status);
+      const skills = await store.listSkills(org.id, status);
       if (skills.length === 0) {
         console.log("\n(no skills yet — run: npm run cb -- ingest <url>)\n");
         break;
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
 
     case "show": {
       if (!positional) return die("usage: cb show <skillId>");
-      const v = store.getSkillView(org.id, positional);
+      const v = await store.getSkillView(org.id, positional);
       if (!v) return die("skill not found");
       console.log(`\n# ${v.current.title}   [${v.skill.status}]`);
       console.log(`slug: ${v.skill.slug} · versions: ${v.versions.length} · sources: ${v.sources.length}`);
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
 
     case "approve": {
       if (!positional) return die("usage: cb approve <skillId>");
-      const v = store.approveSkill(org.id, positional, "founder@cli");
+      const v = await store.approveSkill(org.id, positional, "founder@cli");
       if (!v) return die("skill not found");
       console.log(`\n✅ Approved: ${v.current.title}\n`);
       break;
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
 
     case "archive": {
       if (!positional) return die("usage: cb archive <skillId>");
-      console.log(store.archiveSkill(org.id, positional) ? "\n🗄️  archived\n" : "\nskill not found\n");
+      console.log((await store.archiveSkill(org.id, positional)) ? "\n🗄️  archived\n" : "\nskill not found\n");
       break;
     }
 
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
 
     case "publish": {
       const out = arg("--out", "exports");
-      const r = exportSkills(store, org.id, out);
+      const r = await exportSkills(store, org.id, out);
       console.log(`\n✓ Published ${r.count} skill(s) → ${r.dir}`);
       console.log(`  Manifest: ${r.manifestPath}`);
       console.log(`  MCP endpoint: ${MCP_BASE}/mcp/${org.mcpToken}\n`);

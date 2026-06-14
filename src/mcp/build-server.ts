@@ -8,9 +8,9 @@ import { z } from "zod";
 import { store } from "../lib/store";
 import { skillToMarkdown } from "../lib/publish";
 
-export function buildMcpServer(orgId: string): McpServer {
-  const org = store.getOrg(orgId);
-  const views = store.getPublishedSkills(orgId);
+export async function buildMcpServer(orgId: string): Promise<McpServer> {
+  const org = await store.getOrg(orgId);
+  const views = await store.getPublishedSkills(orgId);
   const server = new McpServer(
     { name: `company-brain/${org?.slug ?? orgId}`, version: "0.1.0" },
     { capabilities: { resources: {}, tools: {} } },

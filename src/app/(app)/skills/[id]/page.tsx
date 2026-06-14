@@ -7,8 +7,8 @@ import { approveAction, archiveAction, regenerateAction, saveEditAction } from "
 
 export default async function SkillDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const org = store.getOrCreateDefaultOrg();
-  const view = store.getSkillView(org.id, id);
+  const org = await store.getOrCreateDefaultOrg();
+  const view = await store.getSkillView(org.id, id);
   if (!view) notFound();
 
   const { skill, current, versions, sources, openFlags } = view;

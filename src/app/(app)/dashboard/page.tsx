@@ -6,10 +6,10 @@ import { detectStaleAction } from "@/app/actions";
 
 const MCP_BASE = process.env.CB_PUBLIC_MCP_BASE ?? "http://localhost:8787";
 
-export default function Dashboard() {
-  const org = store.getOrCreateDefaultOrg();
-  const skills = store.listSkills(org.id);
-  const sources = store.listSources(org.id);
+export default async function Dashboard() {
+  const org = await store.getOrCreateDefaultOrg();
+  const skills = await store.listSkills(org.id);
+  const sources = await store.listSources(org.id);
   const count = (s: SkillStatus) => skills.filter((k) => k.status === s).length;
   const endpoint = `${MCP_BASE}/mcp/${org.mcpToken}`;
 

@@ -58,10 +58,10 @@ function hostOf(url?: string): string {
   }
 }
 
-export default function Landing() {
+export default async function Landing() {
   // Show the org's REAL published skills if any exist; otherwise the curated examples.
-  const org = store.getOrCreateDefaultOrg();
-  const real = store.getPublishedSkills(org.id);
+  const org = await store.getOrCreateDefaultOrg();
+  const real = await store.getPublishedSkills(org.id);
   const rows =
     real.length > 0
       ? real.slice(0, 6).map((v) => ({

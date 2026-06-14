@@ -5,8 +5,8 @@ import { Card } from "@/app/_ui";
 const MCP_BASE = process.env.CB_PUBLIC_MCP_BASE ?? "http://localhost:8787";
 
 export default async function PublishPage() {
-  const org = store.getOrCreateDefaultOrg();
-  const published = store.getPublishedSkills(org.id);
+  const org = await store.getOrCreateDefaultOrg();
+  const published = await store.getPublishedSkills(org.id);
   const endpoint = `${MCP_BASE}/mcp/${org.mcpToken}`;
 
   return (

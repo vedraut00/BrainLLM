@@ -14,7 +14,7 @@ import { store } from "../lib/store";
 const PORT = Number(process.env.CB_MCP_PORT ?? 8787);
 
 async function main(): Promise<void> {
-  const org = store.getOrCreateDefaultOrg();
+  const org = await store.getOrCreateDefaultOrg();
   const endpoint = process.argv[2] ?? `http://localhost:${PORT}/mcp/${org.mcpToken}`;
   console.log(`\n🔌 Connecting MCP client to ${endpoint}\n`);
 

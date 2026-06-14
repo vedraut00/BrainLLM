@@ -51,7 +51,7 @@ const httpServer = createServer(async (req, res) => {
 
     const match = url.pathname.match(/^\/mcp\/([A-Za-z0-9]+)\/?$/);
     if (!match) return sendJson(res, 404, rpcError(-32004, "Not found. Use /mcp/<token>."));
-    const org = store.getOrgByToken(match[1]!);
+    const org = await store.getOrgByToken(match[1]!);
     if (!org) return sendJson(res, 401, rpcError(-32001, "Invalid MCP token."));
 
     const sessionId = header(req, "mcp-session-id");
@@ -77,7 +77,7 @@ const httpServer = createServer(async (req, res) => {
           const sid = transport.sessionId;
           if (sid) sessions.delete(sid);
         };
-        const server = buildMcpServer(org.id);
+        const server = await buildMcpServer(org.id);
         await server.connect(transport);
         await transport.handleRequest(req, res, body);
         return;
@@ -99,10 +99,11 @@ const httpServer = createServer(async (req, res) => {
   }
 });
 
-httpServer.listen(PORT, () => {
-  const org = store.getOrCreateDefaultOrg();
+httpServer.listen(PORT, async () => {
+  const org = await store.getOrCreateDefaultOrg();
+  const published = await store.getPublishedSkills(org.id);
   console.log(`\n🧠 Company Brain MCP server (local) on http://localhost:${PORT}`);
   console.log(`   Default org endpoint:  http://localhost:${PORT}/mcp/${org.mcpToken}`);
-  console.log(`   Published skills:      ${store.getPublishedSkills(org.id).length}`);
+  console.log(`   Published skills:      ${published.length}`);
   console.log(`   (Ctrl+C to stop · production serves the same thing from the Next /mcp/<token> route)\n`);
 });

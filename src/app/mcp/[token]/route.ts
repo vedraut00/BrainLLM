@@ -19,10 +19,10 @@ function rpcError(status: number, code: number, message: string): Response {
 
 export async function POST(req: Request, ctx: { params: Promise<{ token: string }> }): Promise<Response> {
   const { token } = await ctx.params;
-  const org = store.getOrgByToken(token);
+  const org = await store.getOrgByToken(token);
   if (!org) return rpcError(401, -32001, "Invalid MCP token.");
 
-  const server = buildMcpServer(org.id);
+  const server = await buildMcpServer(org.id);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless — each request is self-contained (serverless-friendly)
     enableJsonResponse: true,

@@ -15,8 +15,8 @@ export default async function ConnectPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const org = store.getOrCreateDefaultOrg();
-  const sources = store.listSources(org.id);
+  const org = await store.getOrCreateDefaultOrg();
+  const sources = await store.listSources(org.id);
 
   return (
     <div className="space-y-6">

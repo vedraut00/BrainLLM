@@ -54,9 +54,9 @@ export interface ExportResult {
 }
 
 /** Export an org's published skills to a folder of SKILL.md files + skills.json. */
-export function exportSkills(store: SkillStore, orgId: string, outDir = "exports"): ExportResult {
-  const org = store.getOrg(orgId);
-  const views = store.getPublishedSkills(orgId);
+export async function exportSkills(store: SkillStore, orgId: string, outDir = "exports"): Promise<ExportResult> {
+  const org = await store.getOrg(orgId);
+  const views = await store.getPublishedSkills(orgId);
   const base = resolve(outDir, org?.slug ?? orgId);
   mkdirSync(base, { recursive: true });
 

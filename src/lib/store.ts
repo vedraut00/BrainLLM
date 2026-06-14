@@ -5,18 +5,17 @@
  *   ingest (help-center) -> extract drafts -> review/edit/approve/version
  *   -> publish (export + MCP) -> keep-current (staleness detection).
  *
- * `SkillStore` is the interface the rest of the app talks to. `FileStore` is the
- * dev backend (a single JSON file under .data/). A `SupabaseStore` implementing
- * the same interface drops in later for production — no caller changes.
- *
- * FileStore reads+writes the whole DB on each op (trivial at this scale) so the
- * Next.js app never serves stale in-memory state across requests.
+ * `SkillStore` is the (async) interface the rest of the app talks to.
+ *   - `FileStore`     — dev backend (a single JSON file under .data/).
+ *   - `SupabaseStore` — production backend (Postgres). Same interface, no caller changes.
+ * The exported `store` selects one via env `CB_STORE` (file | supabase).
  */
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { crawlHelpCenter, type Article } from "./crawl";
 import { extractSkills } from "./extract";
+import { SupabaseStore } from "./supabase-store";
 
 /* --------------------------------- types ---------------------------------- */
 
@@ -114,27 +113,32 @@ export interface IngestResult {
 }
 
 export interface SkillStore {
-  getOrCreateDefaultOrg(): Org;
-  getOrg(id: string): Org | undefined;
-  getOrgByToken(token: string): Org | undefined;
-  listSources(orgId: string): Source[];
+  getOrCreateDefaultOrg(): Promise<Org>;
+  getOrg(id: string): Promise<Org | undefined>;
+  getOrgByToken(token: string): Promise<Org | undefined>;
+  listSources(orgId: string): Promise<Source[]>;
   ingestHelpCenter(orgId: string, url: string, max: number, onProgress?: (m: string) => void): Promise<IngestResult>;
-  listSkills(orgId: string, status?: SkillStatus): Skill[];
-  getSkillView(orgId: string, skillId: string): SkillView | undefined;
-  approveSkill(orgId: string, skillId: string, approver: string): SkillView | undefined;
-  saveEdit(orgId: string, skillId: string, edit: { title?: string; description?: string; bodyMd: string }, editor: string): SkillView | undefined;
-  archiveSkill(orgId: string, skillId: string): boolean;
+  listSkills(orgId: string, status?: SkillStatus): Promise<Skill[]>;
+  getSkillView(orgId: string, skillId: string): Promise<SkillView | undefined>;
+  approveSkill(orgId: string, skillId: string, approver: string): Promise<SkillView | undefined>;
+  saveEdit(orgId: string, skillId: string, edit: { title?: string; description?: string; bodyMd: string }, editor: string): Promise<SkillView | undefined>;
+  archiveSkill(orgId: string, skillId: string): Promise<boolean>;
   regenerateSkill(orgId: string, skillId: string): Promise<SkillView | undefined>;
   detectStaleness(orgId: string, onProgress?: (m: string) => void): Promise<StalenessFlag[]>;
-  getPublishedSkills(orgId: string): SkillView[];
+  getPublishedSkills(orgId: string): Promise<SkillView[]>;
 }
 
 /* ------------------------------- helpers ----------------------------------- */
 
-const now = () => new Date().toISOString();
-const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
-const newId = (p: string) => `${p}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
-const newToken = () => (randomUUID() + randomUUID()).replace(/-/g, "");
+export const now = () => new Date().toISOString();
+export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+export const newId = (p: string) => `${p}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+export const newToken = () => (randomUUID() + randomUUID()).replace(/-/g, "");
+
+/** Shared extraction step used by ingest + regenerate (kept here so both stores reuse it). */
+export function buildArticlesFromDocs(docs: Document[]): Article[] {
+  return docs.map((d) => ({ url: d.externalId, title: d.title, markdown: d.content }));
+}
 
 /* ------------------------------- FileStore --------------------------------- */
 
@@ -150,7 +154,6 @@ export class FileStore implements SkillStore {
       return { orgs: [], sources: [], documents: [], skills: [], versions: [], flags: [] };
     }
     const db = JSON.parse(readFileSync(this.path, "utf8")) as DB;
-    // tolerate older/partial files
     db.orgs ??= [];
     db.sources ??= [];
     db.documents ??= [];
@@ -167,7 +170,7 @@ export class FileStore implements SkillStore {
 
   /* ------- orgs ------- */
 
-  getOrCreateDefaultOrg(): Org {
+  async getOrCreateDefaultOrg(): Promise<Org> {
     const db = this.read();
     let org = db.orgs[0];
     if (!org) {
@@ -185,17 +188,17 @@ export class FileStore implements SkillStore {
     return org;
   }
 
-  getOrg(id: string): Org | undefined {
+  async getOrg(id: string): Promise<Org | undefined> {
     return this.read().orgs.find((o) => o.id === id);
   }
 
-  getOrgByToken(token: string): Org | undefined {
+  async getOrgByToken(token: string): Promise<Org | undefined> {
     return this.read().orgs.find((o) => o.mcpToken === token);
   }
 
   /* ------- sources ------- */
 
-  listSources(orgId: string): Source[] {
+  async listSources(orgId: string): Promise<Source[]> {
     return this.read().sources.filter((s) => s.orgId === orgId);
   }
 
@@ -216,10 +219,7 @@ export class FileStore implements SkillStore {
     max: number,
     onProgress?: (m: string) => void,
   ): Promise<IngestResult> {
-    const base = new URL(url); // throws on bad input — caller handles
-    // Do all slow/awaited work (crawl + LLM) BEFORE touching the DB, so the
-    // actual persistence is a single synchronous read-modify-write that can't
-    // interleave with — and clobber — another operation's write.
+    const base = new URL(url);
     const articles = await crawlHelpCenter(base.href, max, onProgress);
     onProgress?.(`Extracting skills from ${articles.length} article(s)...`);
     const drafts = await extractSkills(articles);
@@ -227,7 +227,6 @@ export class FileStore implements SkillStore {
     const db = this.read();
     const source = this.upsertSource(db, orgId, "helpcenter", base.origin + base.pathname);
 
-    // upsert documents (content hashes power staleness detection)
     const urlToDoc = new Map<string, Document>();
     let documentsUpserted = 0;
     for (const a of articles) {
@@ -256,8 +255,6 @@ export class FileStore implements SkillStore {
     source.lastSyncedAt = now();
     source.syncState = "idle";
 
-    // create draft skills (skip slugs already present — never clobber an existing,
-    // possibly human-edited, skill on re-ingest; staleness detection handles refresh)
     const existing = new Set(db.skills.filter((s) => s.orgId === orgId).map((s) => s.slug));
     let skillsCreated = 0;
     let skillsSkipped = 0;
@@ -269,9 +266,7 @@ export class FileStore implements SkillStore {
       existing.add(d.slug);
       const skillId = newId("skl");
       const versionId = newId("ver");
-      const generatedFrom = d.sources
-        .map((s) => urlToDoc.get(s.url)?.id)
-        .filter((x): x is string => Boolean(x));
+      const generatedFrom = d.sources.map((s) => urlToDoc.get(s.url)?.id).filter((x): x is string => Boolean(x));
       const ts = now();
       db.versions.push({
         id: versionId,
@@ -300,18 +295,12 @@ export class FileStore implements SkillStore {
     }
     this.write(db);
 
-    return {
-      source,
-      articlesFound: articles.length,
-      documentsUpserted,
-      skillsCreated,
-      skillsSkipped,
-    };
+    return { source, articlesFound: articles.length, documentsUpserted, skillsCreated, skillsSkipped };
   }
 
   /* ------- skills ------- */
 
-  listSkills(orgId: string, status?: SkillStatus): Skill[] {
+  async listSkills(orgId: string, status?: SkillStatus): Promise<Skill[]> {
     return this.read()
       .skills.filter((s) => s.orgId === orgId && (!status || s.status === status))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -331,14 +320,14 @@ export class FileStore implements SkillStore {
     return { skill, current, versions, sources, openFlags };
   }
 
-  getSkillView(orgId: string, skillId: string): SkillView | undefined {
+  async getSkillView(orgId: string, skillId: string): Promise<SkillView | undefined> {
     const db = this.read();
     const skill = db.skills.find((s) => s.id === skillId && s.orgId === orgId);
     if (!skill) return undefined;
     return this.buildView(db, skill);
   }
 
-  approveSkill(orgId: string, skillId: string, approver: string): SkillView | undefined {
+  async approveSkill(orgId: string, skillId: string, approver: string): Promise<SkillView | undefined> {
     const db = this.read();
     const skill = db.skills.find((s) => s.id === skillId && s.orgId === orgId);
     if (!skill) return undefined;
@@ -348,18 +337,17 @@ export class FileStore implements SkillStore {
     version.approvedAt = now();
     skill.status = "approved";
     skill.updatedAt = now();
-    // approving the current version resolves any open staleness flags
     for (const f of db.flags) if (f.skillId === skill.id && !f.resolvedAt) f.resolvedAt = now();
     this.write(db);
     return this.buildView(db, skill);
   }
 
-  saveEdit(
+  async saveEdit(
     orgId: string,
     skillId: string,
     edit: { title?: string; description?: string; bodyMd: string },
     editor: string,
-  ): SkillView | undefined {
+  ): Promise<SkillView | undefined> {
     const db = this.read();
     const skill = db.skills.find((s) => s.id === skillId && s.orgId === orgId);
     if (!skill) return undefined;
@@ -381,13 +369,13 @@ export class FileStore implements SkillStore {
     skill.currentVersionId = versionId;
     skill.title = edit.title ?? skill.title;
     skill.description = edit.description ?? skill.description;
-    skill.status = "draft"; // an edit needs (re-)approval before publishing
+    skill.status = "draft";
     skill.updatedAt = ts;
     this.write(db);
     return this.buildView(db, skill);
   }
 
-  archiveSkill(orgId: string, skillId: string): boolean {
+  async archiveSkill(orgId: string, skillId: string): Promise<boolean> {
     const db = this.read();
     const skill = db.skills.find((s) => s.id === skillId && s.orgId === orgId);
     if (!skill) return false;
@@ -397,7 +385,6 @@ export class FileStore implements SkillStore {
     return true;
   }
 
-  /** Re-run extraction from this skill's source documents → a fresh AI draft version. */
   async regenerateSkill(orgId: string, skillId: string): Promise<SkillView | undefined> {
     const db = this.read();
     const skill = db.skills.find((s) => s.id === skillId && s.orgId === orgId);
@@ -406,25 +393,21 @@ export class FileStore implements SkillStore {
     const docs = (version?.generatedFrom ?? [])
       .map((id) => db.documents.find((d) => d.id === id))
       .filter((d): d is Document => Boolean(d));
-    if (docs.length === 0) return this.buildView(db, skill); // nothing to regenerate from
-    const articles: Article[] = docs.map((d) => ({ url: d.externalId, title: d.title, markdown: d.content }));
-    const drafts = await extractSkills(articles);
+    if (docs.length === 0) return this.buildView(db, skill);
+    const drafts = await extractSkills(buildArticlesFromDocs(docs));
     const best = drafts[0];
     if (!best) return this.buildView(this.read(), skill);
-    // saveEdit creates a new (unapproved) AI version and resets status to draft
     return this.saveEdit(orgId, skillId, { title: best.title, description: best.description, bodyMd: best.body }, "ai");
   }
 
   /* ------- staleness ------- */
 
   async detectStaleness(orgId: string, onProgress?: (m: string) => void): Promise<StalenessFlag[]> {
-    const sources = this.listSources(orgId).filter((s) => s.type === "helpcenter");
+    const sources = (await this.listSources(orgId)).filter((s) => s.type === "helpcenter");
     const created: StalenessFlag[] = [];
 
     for (const source of sources) {
       onProgress?.(`Re-crawling ${source.ref} ...`);
-      // Re-crawl at least as many articles as we ingested, so skills built from
-      // lower-ranked articles are still checked (not just the first N).
       const storedDocCount = this.read().documents.filter((d) => d.sourceId === source.id).length;
       let articles: Article[] = [];
       try {
@@ -439,7 +422,7 @@ export class FileStore implements SkillStore {
       const changedDocIds: string[] = [];
       for (const doc of docs) {
         const fresh = byUrl.get(doc.externalId);
-        if (!fresh) continue; // article removed — leave for now
+        if (!fresh) continue;
         const hash = sha256(fresh.markdown);
         if (hash !== doc.contentHash) {
           doc.content = fresh.markdown;
@@ -475,8 +458,6 @@ export class FileStore implements SkillStore {
           }
         }
       }
-      // mutate the source record inside THIS db snapshot (the loop's `source`
-      // came from a different read and wouldn't be persisted).
       const dbSource = db.sources.find((s) => s.id === source.id);
       if (dbSource) dbSource.lastSyncedAt = now();
       this.write(db);
@@ -486,8 +467,7 @@ export class FileStore implements SkillStore {
 
   /* ------- publish ------- */
 
-  /** Approved + stale skills (stale = approved-but-source-changed; still served, flagged). */
-  getPublishedSkills(orgId: string): SkillView[] {
+  async getPublishedSkills(orgId: string): Promise<SkillView[]> {
     const db = this.read();
     return db.skills
       .filter((s) => s.orgId === orgId && (s.status === "approved" || s.status === "stale"))
@@ -496,5 +476,8 @@ export class FileStore implements SkillStore {
   }
 }
 
-/** Default singleton store for the app/CLI. */
-export const store: SkillStore = new FileStore();
+/* ------------------------------- selector ---------------------------------- */
+
+/** The app/CLI/MCP all import this singleton. `CB_STORE=supabase` switches to Postgres. */
+export const store: SkillStore =
+  (process.env.CB_STORE ?? "file").toLowerCase() === "supabase" ? new SupabaseStore() : new FileStore();

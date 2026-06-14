@@ -9,8 +9,8 @@ import { skillToMarkdown } from "@/lib/publish";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  const org = store.getOrCreateDefaultOrg();
-  const views = store.getPublishedSkills(org.id);
+  const org = await store.getOrCreateDefaultOrg();
+  const views = await store.getPublishedSkills(org.id);
 
   const zip = new JSZip();
   const manifest = views.map((v) => {
