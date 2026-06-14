@@ -156,13 +156,15 @@ export class SupabaseStore implements SkillStore {
       const versionId = newId("ver");
       const generatedFrom = d.sources.map((s) => urlToDoc.get(s.url)?.id).filter((x): x is string => Boolean(x));
       const ts = now();
-      await this.insert("skill_versions", {
-        id: versionId, skill_id: skillId, body_md: d.body, description: d.description, title: d.title,
-        generated_from: generatedFrom, created_by: "ai", created_at: ts, approved_by: null, approved_at: null,
-      });
+      // Insert the skill BEFORE its version — skill_versions.skill_id has a FK to skills(id).
+      // (current_version_id is a plain column with no FK, so pointing it at the not-yet-inserted version is fine.)
       await this.insert("skills", {
         id: skillId, org_id: orgId, slug: d.slug, title: d.title, description: d.description,
         status: "draft", current_version_id: versionId, created_at: ts, updated_at: ts,
+      });
+      await this.insert("skill_versions", {
+        id: versionId, skill_id: skillId, body_md: d.body, description: d.description, title: d.title,
+        generated_from: generatedFrom, created_by: "ai", created_at: ts, approved_by: null, approved_at: null,
       });
       skillsCreated++;
     }

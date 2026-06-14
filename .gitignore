@@ -12,6 +12,7 @@ out/
 # local data store (FileStore dev backend) + exports
 .data/
 exports/
+automation/out/
 
 # logs
 *.log

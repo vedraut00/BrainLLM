@@ -50,7 +50,7 @@ export default async function SkillsPage({
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-line">
         {TABS.map((t) => {
           const active = (filter ?? "all") === t.key;
           const href = t.key === "all" ? "/skills" : `/skills?status=${t.key}`;
@@ -70,7 +70,7 @@ export default async function SkillsPage({
 
       {skills.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             No skills{filter ? ` with status "${filter}"` : ""} yet.{" "}
             <Link href="/connect" className="text-slate-900 underline">
               Connect a source
@@ -84,7 +84,7 @@ export default async function SkillsPage({
             <li key={s.id}>
               <Link
                 href={`/skills/${s.id}`}
-                className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 hover:border-slate-300 hover:shadow-sm"
+                className="flex items-center justify-between rounded-xl border border-line bg-white px-5 py-3 hover:border-slate-300 hover:shadow-sm"
               >
                 <div>
                   <div className="font-medium text-slate-900">{s.title}</div>

@@ -22,7 +22,7 @@ export default async function ConnectPage({
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Connect a source</h1>
-        <p className="mt-1 text-slate-600">
+        <p className="mt-1 text-muted">
           v1 reads <strong>public help centers</strong> (Zendesk, Intercom, most docs sites) — no login
           required. Slack, Google Drive, Notion and Intercom/Zendesk ticket connectors come next.
         </p>
@@ -57,7 +57,7 @@ export default async function ConnectPage({
               className="mt-1 w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
             />
           </div>
-          <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          <button className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
             Ingest &amp; draft skills
           </button>
           <p className="text-xs text-slate-500">
@@ -70,7 +70,7 @@ export default async function ConnectPage({
       {sources.length > 0 && (
         <Card>
           <h2 className="font-semibold">Connected sources</h2>
-          <ul className="mt-2 space-y-1 text-sm text-slate-600">
+          <ul className="mt-2 space-y-1 text-sm text-muted">
             {sources.map((s) => (
               <li key={s.id} className="flex justify-between">
                 <span>

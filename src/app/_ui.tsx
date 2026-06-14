@@ -15,15 +15,15 @@ export function StatusBadge({ status }: { status: SkillStatus }) {
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-line bg-white p-5 shadow-sm ${className}`}>{children}</div>
   );
 }
 
 export function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
-      <div className="text-2xl font-semibold text-slate-900">{value}</div>
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+    <div className="rounded-2xl border border-line bg-white px-5 py-4">
+      <div className="text-2xl font-semibold text-ink">{value}</div>
+      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
     </div>
   );
 }

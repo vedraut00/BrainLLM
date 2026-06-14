@@ -13,19 +13,19 @@ export default async function PublishPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Ship</h1>
-        <p className="mt-1 text-slate-600">
+        <p className="mt-1 text-muted">
           Your approved skills, available two ways: a hosted MCP endpoint and a downloadable bundle of SKILL.md files.
         </p>
       </div>
 
       <Card>
         <h2 className="font-semibold">Hosted MCP endpoint</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Add this server to any MCP client. It serves your approved skills as resources and the{" "}
           <code>list_skills</code> / <code>get_skill</code> tools. Start it locally with{" "}
           <code className="rounded bg-slate-100 px-1">npm run mcp</code>.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100">{endpoint}</pre>
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-navy px-4 py-3 text-xs text-slate-100">{endpoint}</pre>
         <p className="mt-2 text-xs text-slate-500">
           Token (keep secret): <code className="break-all">{org.mcpToken}</code>
         </p>
@@ -35,7 +35,7 @@ export default async function PublishPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold">Download skill bundle</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               A <code>.zip</code> of your approved skills as <code>SKILL.md</code> files (Agent Skill format) plus a{" "}
               <code>skills.json</code> manifest.
             </p>
@@ -45,7 +45,7 @@ export default async function PublishPage() {
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
               published.length === 0
                 ? "pointer-events-none bg-slate-200 text-slate-400"
-                : "bg-slate-900 text-white hover:bg-slate-800"
+                : "bg-navy text-white hover:bg-slate-800"
             }`}
           >
             Download .zip

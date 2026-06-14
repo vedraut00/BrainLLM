@@ -55,7 +55,7 @@ export default async function SkillDetail({ params }: { params: Promise<{ id: st
         {skill.status !== "archived" && (
           <form action={archiveAction}>
             <input type="hidden" name="skillId" value={skill.id} />
-            <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-muted hover:bg-slate-50">
               Archive
             </button>
           </form>
@@ -74,7 +74,7 @@ export default async function SkillDetail({ params }: { params: Promise<{ id: st
       {/* Edit form */}
       <Card>
         <h2 className="font-semibold">Review &amp; edit</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Editing creates a new version and resets status to <em>draft</em> — approve again to publish it.
         </p>
         <form action={saveEditAction} className="mt-4 space-y-4">

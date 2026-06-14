@@ -17,7 +17,7 @@ export default async function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Welcome to {org.name}</h1>
-        <p className="mt-1 text-slate-600">
+        <p className="mt-1 text-muted">
           Turn your scattered docs into human-approved skills your AI agents can trust.
         </p>
       </div>
@@ -33,12 +33,12 @@ export default async function Dashboard() {
       {skills.length === 0 ? (
         <Card>
           <h2 className="font-semibold">Get started</h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Connect a public help center and we&apos;ll draft skills from it in about a minute.
           </p>
           <Link
             href="/connect"
-            className="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="mt-4 inline-block rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
             Connect your first source →
           </Link>
@@ -47,7 +47,7 @@ export default async function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <h2 className="font-semibold">Next step</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               {count("draft") > 0
                 ? `You have ${count("draft")} draft skill(s) waiting for review.`
                 : "All caught up. Connect another source or check for stale skills."}
@@ -55,7 +55,7 @@ export default async function Dashboard() {
             <div className="mt-4 flex gap-2">
               <Link
                 href="/skills?status=draft"
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Review drafts
               </Link>
@@ -70,7 +70,7 @@ export default async function Dashboard() {
 
           <Card>
             <h2 className="font-semibold">Keep current</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted">
               Re-check your sources; we flag approved skills whose source changed.
             </p>
             <form action={detectStaleAction} className="mt-4">
@@ -84,10 +84,10 @@ export default async function Dashboard() {
 
       <Card>
         <h2 className="font-semibold">Your MCP endpoint</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Point any MCP-capable AI agent here to use your <strong>approved</strong> skills:
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-xs text-slate-100">{endpoint}</pre>
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-navy px-4 py-3 text-xs text-slate-100">{endpoint}</pre>
         <p className="mt-2 text-xs text-slate-500">
           Only approved (and stale-but-approved) skills are served. Manage in{" "}
           <Link href="/publish" className="text-slate-900 underline">

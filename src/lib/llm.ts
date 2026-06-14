@@ -127,16 +127,32 @@ export async function runExtraction(system: string, user: string, modelOverride?
   };
   if (cfg.jsonMode) body.response_format = { type: "json_object" };
 
-  const res = await fetch(url, {
+  const init = {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
     body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
+  };
+  // Retry transient failures (429 rate limit, 5xx overload/UNAVAILABLE, network errors).
+  const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+  let res: Response | undefined;
+  let netErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      res = await fetch(url, init);
+      netErr = undefined;
+      if (res.ok || !RETRYABLE.has(res.status) || attempt === 3) break;
+    } catch (e) {
+      netErr = e;
+      if (attempt === 3) break;
+    }
+    await new Promise((r) => setTimeout(r, 1500 * attempt)); // 1.5s, 3s backoff
+  }
+  if (netErr) throw new Error(`LLM network error: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+  if (!res || !res.ok) {
+    const text = res ? await res.text() : "";
     throw new Error(
-      `LLM request failed (${res.status}). ${text.slice(0, 300)}\n` +
-        `Tip: if the model id is wrong, set CB_LLM_MODEL; if response_format is rejected, set CB_LLM_JSON_MODE=0.`,
+      `LLM request failed (${res?.status ?? "no response"}). ${text.slice(0, 300)}\n` +
+        `Tip: transient overload retries 3x; if the model id is wrong set CB_LLM_MODEL; if response_format is rejected set CB_LLM_JSON_MODE=0.`,
     );
   }
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
